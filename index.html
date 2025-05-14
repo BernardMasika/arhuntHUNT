@@ -1,50 +1,594 @@
 <!DOCTYPE html>
-
 <html>
   <head>
-    <title>AR hunt hunt</title>
+    <title>AR Scavenger Hunt</title>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- Base styles -->
     <link rel="stylesheet" href="styles.css">
-
-    <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+    
+    <!-- Bootstrap CSS for preloader (you can customize or remove this) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    
+    <!-- Custom preloader styles -->
+    <style>
+      /* Preloader styles */
+      #preloader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.9);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        transition: opacity 0.5s ease;
+      }
+      
+      #loading-bar-container {
+        width: 80%;
+        max-width: 400px;
+        height: 20px;
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        margin-bottom: 20px;
+        overflow: hidden;
+      }
+      
+      #loading-bar {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #008ABF, #5D2E8F);
+        border-radius: 10px;
+        transition: width 0.3s ease;
+      }
+      
+      #loading-text {
+        color: white;
+        font-family: Arial, sans-serif;
+        font-size: 16px;
+        text-align: center;
+      }
+      
+      .logo {
+        margin-bottom: 30px;
+        max-width: 200px;
+        height: auto;
+      }
+      
+      /* Top Title Bar Styles */
+      #title-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px 15px;
+        text-align: center;
+        font-family: 'Arial', sans-serif;
+        font-weight: bold;
+        font-size: 18px;
+        z-index: 900; /* Lower than preloader but higher than AR scene */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        border-bottom: 2px solid #008ABF; /* IWTZ blue */
+      }
+      
+      /* Marker Detection Feedback */
+      #marker-feedback {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(93, 46, 143, 0.7); /* SeedeXR Purple */
+        color: white;
+        padding: 15px 25px;
+        border-radius: 10px;
+        font-family: 'Arial', sans-serif;
+        font-size: 18px;
+        font-weight: bold;
+        text-align: center;
+        z-index: 800;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+      }
+      
+      /* SeedeXR Branding Logo */
+      #branding-logo {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        width: 80px;
+        height: auto;
+        z-index: 800;
+        opacity: 0.8;
+        transition: opacity 0.3s ease;
+      }
+      
+      #branding-logo:hover {
+        opacity: 1;
+      }
+      
+      /* Progress Indicator - Adjust positioning */
+      #progress-container {
+        position: fixed;
+        bottom: 20px;
+        left: 0;
+        right: 0;
+        width: auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 800;
+        margin: 0 120px; /* Make space for the logo */
+      }
+      
+      #progress-prompt {
+        color: white;
+        font-family: 'Arial', sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        text-align: center;
+        margin-bottom: 8px;
+        background-color: rgba(0, 0, 0, 0.5);
+        padding: 5px 12px;
+        border-radius: 15px;
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      }
+      
+      #progress-bar {
+        background-color: rgba(0, 0, 0, 0.7);
+        border-radius: 20px;
+        padding: 8px 15px;
+        display: flex;
+        align-items: center;
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      }
+      
+      .marker-indicator {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        background-color: rgba(255, 255, 255, 0.3);
+        margin: 0 5px;
+        transition: background-color 0.3s ease;
+      }
+      
+      .marker-indicator.found {
+        background-color: #008ABF; /* IWTZ Blue */
+        box-shadow: 0 0 8px #008ABF;
+      }
+      
+      #progress-text {
+        color: white;
+        font-size: 14px;
+        margin-left: 10px;
+        font-family: 'Arial', sans-serif;
+      }
+    </style>
+    
+    <!-- A-Frame and AR.js Scripts -->
+    <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <script src="gesture-detector.js"></script>
-    <script src="gesture-handler.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.0.0/dist/aframe-extras.min.js"></script>
+    <!--  <script src="gesture-detector.js"></script> 
+    <!--  <script src="gesture-handler.js"></script> -->
+    
+    <!-- Animation Control Script -->
+    <script>
+      // IndexedDB for Progress Tracking
+      class MarkerProgressDB {
+        constructor() {
+          this.dbName = 'ARScavengerHuntDB';
+          this.storeName = 'foundMarkers';
+          this.db = null;
+          this.initDB();
+        }
+        
+        initDB() {
+          const request = indexedDB.open(this.dbName, 1);
+          
+          request.onerror = (event) => {
+            console.error('IndexedDB error:', event.target.error);
+          };
+          
+          request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            
+            // Create object store if it doesn't exist
+            if (!db.objectStoreNames.contains(this.storeName)) {
+              db.createObjectStore(this.storeName, { keyPath: 'markerId' });
+              console.log('Created markers store');
+            }
+          };
+          
+          request.onsuccess = (event) => {
+            this.db = event.target.result;
+            console.log('IndexedDB initialized');
+            
+            // After DB is ready, update the UI
+            this.loadAllMarkers().then(markers => {
+              updateProgressUI(markers);
+            });
+          };
+        }
+        
+        saveMarker(markerId) {
+          return new Promise((resolve, reject) => {
+            if (!this.db) {
+              reject('Database not initialized');
+              return;
+            }
+            
+            const transaction = this.db.transaction([this.storeName], 'readwrite');
+            const store = transaction.objectStore(this.storeName);
+            
+            const marker = {
+              markerId: markerId,
+              timestamp: Date.now()
+            };
+            
+            const request = store.put(marker);
+            
+            request.onsuccess = () => {
+              resolve(marker);
+            };
+            
+            request.onerror = (event) => {
+              reject(event.target.error);
+            };
+          });
+        }
+        
+        loadMarker(markerId) {
+          return new Promise((resolve, reject) => {
+            if (!this.db) {
+              reject('Database not initialized');
+              return;
+            }
+            
+            const transaction = this.db.transaction([this.storeName], 'readonly');
+            const store = transaction.objectStore(this.storeName);
+            const request = store.get(markerId);
+            
+            request.onsuccess = () => {
+              resolve(request.result);
+            };
+            
+            request.onerror = (event) => {
+              reject(event.target.error);
+            };
+          });
+        }
+        
+        loadAllMarkers() {
+          return new Promise((resolve, reject) => {
+            if (!this.db) {
+              reject('Database not initialized');
+              return;
+            }
+            
+            const transaction = this.db.transaction([this.storeName], 'readonly');
+            const store = transaction.objectStore(this.storeName);
+            const request = store.getAll();
+            
+            request.onsuccess = () => {
+              resolve(request.result);
+            };
+            
+            request.onerror = (event) => {
+              reject(event.target.error);
+            };
+          });
+        }
+      }
+      
+      // Global markers configuration
+      const allMarkers = [
+        { id: 'markerA', name: 'IW Fun Fact 1' },
+        { id: 'markerB', name: 'IW Fun Fact 2' },
+        { id: 'markerC', name: 'Marker 3' },
+        { id: 'markerD', name: 'Marker 4' },
+        { id: 'markerE', name: 'Marker 5' }
+      ];
+      
+      // Create progress DB instance
+      const progressDB = new MarkerProgressDB();
+      
+      // Update progress UI based on found markers
+      function updateProgressUI(foundMarkers) {
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const progressPrompt = document.getElementById('progress-prompt');
+        
+        if (!progressBar || !progressText) return;
+        
+        // Create map of found markers for easier lookup
+        const foundMap = {};
+        foundMarkers.forEach(marker => {
+          foundMap[marker.markerId] = true;
+        });
+        
+        // Clear existing indicators
+        progressBar.querySelectorAll('.marker-indicator').forEach(el => el.remove());
+        
+        // Add indicator for each marker
+        allMarkers.forEach(marker => {
+          const indicator = document.createElement('div');
+          indicator.className = 'marker-indicator';
+          indicator.id = `indicator-${marker.id}`;
+          
+          // Mark as found if in our found list
+          if (foundMap[marker.id]) {
+            indicator.classList.add('found');
+          }
+          
+          progressBar.insertBefore(indicator, progressText);
+        });
+        
+        // Update progress text
+        const foundCount = Object.keys(foundMap).length;
+        progressText.textContent = `${foundCount}/${allMarkers.length}`;
+        
+        // Update prompt based on completion
+        if (foundCount === 0) {
+          progressPrompt.textContent = 'Find innovation facts around you!';
+        } else if (foundCount === allMarkers.length) {
+          progressPrompt.textContent = 'You found all the facts! Great job! Quickly take a Screenshot, Share Tag Innovation Week & Us to win a prize!';
+          progressPrompt.style.backgroundColor = 'rgba(0, 138, 191, 0.7)'; // IWTZ Blue
+        } else {
+          progressPrompt.textContent = `Found ${foundCount}! Keep looking for more!`;
+        }
+      }
+      
+      // Show marker detection feedback
+      function showMarkerFeedback(markerId, isNew) {
+        const feedback = document.getElementById('marker-feedback');
+        
+        if (!feedback) return;
+        
+        // Find marker info
+        const markerInfo = allMarkers.find(m => m.id === markerId);
+        if (!markerInfo) return;
+        
+        // Set feedback text
+        feedback.textContent = isNew 
+          ? `New marker found: ${markerInfo.name}!` 
+          : `Marker detected: ${markerInfo.name}`;
+        
+        // Show feedback
+        feedback.style.opacity = '1';
+        
+        // Hide after delay
+        setTimeout(() => {
+          feedback.style.opacity = '0';
+        }, 2000);
+      }
+      
+      // Custom loading component
+      AFRAME.registerComponent('custom-loading', {
+        init: function() {
+          // Elements
+          const preloader = document.getElementById('preloader');
+          const loadingBar = document.getElementById('loading-bar');
+          const loadingText = document.getElementById('loading-text');
+          const scene = this.el;
+          
+          // Track loading
+          let assetsLoaded = 0;
+          const assetItems = document.querySelectorAll('a-asset-item');
+          const totalAssets = assetItems.length || 1; // At least 1 to avoid division by zero
+          
+          // Update loading progress
+          const updateProgress = (progress) => {
+            loadingBar.style.width = progress + '%';
+            loadingText.textContent = `Loading AR Experience: ${Math.round(progress)}%`;
+            
+            // If loading complete
+            if (progress >= 100) {
+              loadingText.textContent = 'Starting AR Experience...';
+              
+              // Hide preloader after a delay
+              setTimeout(() => {
+                preloader.style.opacity = '0';
+                setTimeout(() => {
+                  preloader.style.display = 'none';
+                }, 500);
+              }, 1000);
+            }
+          };
+          
+          // Initialize with 10%
+          updateProgress(10);
+          
+          // Handle asset loading
+          if (assetItems.length > 0) {
+            assetItems.forEach(item => {
+              item.addEventListener('loaded', function() {
+                assetsLoaded++;
+                updateProgress((assetsLoaded / totalAssets) * 90 + 10);
+              });
+            });
+          } else {
+            // If no specific assets to track, simulate progress
+            let progress = 10;
+            const interval = setInterval(() => {
+              progress += 5;
+              updateProgress(progress);
+              if (progress >= 90) {
+                clearInterval(interval);
+              }
+            }, 100);
+          }
+          
+          // Handle scene loaded event
+          scene.addEventListener('loaded', () => {
+            updateProgress(100);
+          });
+          
+          // Simulate camera initialization (since it's hard to detect)
+          setTimeout(() => {
+            if (parseInt(loadingBar.style.width) < 100) {
+              updateProgress(100);
+            }
+          }, 5000); // Fallback timeout
+        }
+      });
+      
+      // Model animation handler component
+      AFRAME.registerComponent('model-handler', {
+        init: function() {
+          const el = this.el;
+          const model = el.querySelector('[gltf-model]');
+          const markerId = el.id;
+          
+          // Animation will play once automatically due to animation-mixer="loop: once"
+          
+          // When marker is found
+          el.addEventListener('markerFound', function() {
+            // Check if marker was found before
+            progressDB.loadMarker(markerId).then(existingMarker => {
+              // If this is the first time seeing this marker
+              if (!existingMarker) {
+                // Save the marker to DB
+                progressDB.saveMarker(markerId).then(() => {
+                  // Update the progress indicators
+                  progressDB.loadAllMarkers().then(markers => {
+                    updateProgressUI(markers);
+                  });
+                  
+                  // Show new marker feedback
+                  showMarkerFeedback(markerId, true);
+                });
+              } else {
+                // Show regular detection feedback
+                showMarkerFeedback(markerId, false);
+              }
+              
+              // Reset and play animation regardless if new or not
+              if (model && model.components['animation-mixer']) {
+                const mixer = model.components['animation-mixer'];
+                if (mixer && mixer.mixer) {
+                  // Reset animation to beginning
+                  mixer.mixer.time = 0;
+                  mixer.mixer.setTime(0);
+                  // Play the animation again
+                  mixer.playAction();
+                }
+              }
+            });
+          });
+        }
+      });
+    </script>
   </head>
 
   <body>
+    <!-- Custom Preloader -->
+    <div id="preloader">
+      <img src="https://cdn.glitch.global/c8d1bb68-09d0-4907-ba58-012a6c2b5d3b/seedexr-logo.png?v=1747005834374" alt="Innovation Week Tanzania Logo" class="logo">
+      <div id="loading-bar-container">
+        <div id="loading-bar"></div>
+      </div>
+      <div id="loading-text">Initializing AR Experience...</div>
+    </div>
+    
+    <!-- Title Bar -->
+    <div id="title-bar">
+      Innovation Week Tz Facts Hunt
+    </div>
+    
+    <!-- Marker Detection Feedback -->
+    <div id="marker-feedback"></div>
+    
+    <!-- SeedeXR Branding Logo -->
+    <img id="branding-logo" src="https://cdn.glitch.global/c8d1bb68-09d0-4907-ba58-012a6c2b5d3b/seedexr-logo.png?v=1747005834374" alt="SeedeXR Logo">
+    
+    <!-- Progress Indicator -->
+    <div id="progress-container">
+      <div id="progress-prompt">Find more innovation facts around you!</div>
+      <div id="progress-bar">
+        <!-- Marker indicators will be added by JS -->
+        <div id="progress-text">0/5</div>
+      </div>
+    </div>
+    
+    <!-- AR Scene with custom loading component -->
     <a-scene
+      custom-loading
       arjs
       embedded
       renderer="logarithmicDepthBuffer: true;"
       vr-mode-ui="enabled: false"
       gesture-detector
       id="scene"
+      loading-screen="enabled: false;"
     >
       <a-assets>
         <a-asset-item
           id="bowser"
-          src="https://cdn.glitch.global/c8d1bb68-09d0-4907-ba58-012a6c2b5d3b/KongfuPanda.glb?v=1741516189970"
+          src="https://cdn.glitch.global/c8d1bb68-09d0-4907-ba58-012a6c2b5d3b/QnSlab.glb?v=1747164836067"
         >
         </a-asset-item>
       </a-assets>
 
       <a-marker
-        preset="hiro"
+        type="pattern"
+        url="https://cdn.glitch.global/c8d1bb68-09d0-4907-ba58-012a6c2b5d3b/IW%20logo%20Pattern.patt?v=1747181118104"
         raycaster="objects: .clickable"
         emitevents="true"
         cursor="fuse: false; rayOrigin: mouse;"
         id="markerA"
-        size="2"
+        size="10"
+        model-handler
       >
         <a-entity
           id="bowser-model"
           gltf-model="#bowser"
-          position="0 0 0"
-          scale="1 1 1"
+          position="0 0.5 0"
+          rotation="-90 0 0"
+          scale="10 10 10"
           class="clickable"
-          gesture-handler
+          gesture-handler="minScale: 1; maxScale: 3;"
+          animation-mixer="loop: once; clampWhenFinished: true;"
+        >
+        </a-entity>
+      </a-marker>
+      
+       <a-marker
+        type="pattern"
+        url="https://cdn.glitch.global/c8d1bb68-09d0-4907-ba58-012a6c2b5d3b/Future%20Ready%20Pattern.patt?v=1747181163504"
+        raycaster="objects: .clickable"
+        emitevents="true"
+        cursor="fuse: false; rayOrigin: mouse;"
+        id="markerB"
+        size="10"
+        model-handler
+      >
+        <a-entity
+          id="fun-fact02"
+          gltf-model="#bowser"
+          position="0 0.5 0"
+          rotation="-90 0 0"
+          scale="10 10 10"
+          class="clickable"
+          gesture-handler="minScale: 1; maxScale: 3;"
+          animation-mixer="loop: once; clampWhenFinished: true;"
         >
         </a-entity>
       </a-marker>
